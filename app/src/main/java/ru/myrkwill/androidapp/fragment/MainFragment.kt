@@ -11,11 +11,14 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.FragmentActivity
+import androidx.fragment.app.activityViewModels
 import com.android.volley.Request
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
 import com.google.android.material.tabs.TabLayoutMediator
+import com.squareup.picasso.Picasso
 import org.json.JSONObject
+import ru.myrkwill.androidapp.MainViewModel
 import ru.myrkwill.androidapp.R
 import ru.myrkwill.androidapp.adapter.VpAdapter
 import ru.myrkwill.androidapp.adapter.WeatherModel
@@ -37,6 +40,7 @@ class MainFragment : Fragment() {
 
     private lateinit var pLauncher: ActivityResultLauncher<String>
     private lateinit var binding: FragmentMainBinding
+    private val model: MainViewModel by activityViewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -50,6 +54,7 @@ class MainFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         checkPermission()
         init()
+        updateCurrentCard()
         requestWeatherData("London")
     }
 
@@ -59,6 +64,18 @@ class MainFragment : Fragment() {
         TabLayoutMediator(tabLayout, vp) { tab, pos ->
             tab.text = tList[pos]
         }.attach()
+    }
+
+    private fun updateCurrentCard() = with(binding) {
+        model.liveDataCurrent.observe(viewLifecycleOwner) { item ->
+            tvDate.text = item.time
+            tvCity.text = item.city
+            tvCurrentTemp.text = item.currentTemp
+            tvCondition.text = item.condition
+            val maxMinTemp = "${item.maxTemp}C/${item.minTemp}C"
+            tvMaxMin.text = maxMinTemp
+            Picasso.get().load("https:" + item.imageUrl).into(imWeather)
+        }
     }
 
     private fun requestWeatherData(city: String) {
@@ -119,6 +136,7 @@ class MainFragment : Fragment() {
             mainObject.getJSONObject("current").getJSONObject("condition").getString("icon"),
             weatherItem.hours
         )
+        model.liveDataCurrent.value = item
         Log.d("MyLog", "City: ${item.city}")
         Log.d("MyLog", "Time: ${item.time}")
         Log.d("MyLog", "condition: ${item.condition}")
