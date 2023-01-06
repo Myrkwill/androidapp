@@ -5,7 +5,11 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.LinearLayoutManager
+import org.json.JSONArray
+import org.json.JSONObject
+import ru.myrkwill.androidapp.MainViewModel
 import ru.myrkwill.androidapp.R
 import ru.myrkwill.androidapp.adapter.WeatherAdapter
 import ru.myrkwill.androidapp.adapter.WeatherModel
@@ -15,6 +19,7 @@ class HoursFragment : Fragment() {
 
     private lateinit var binding: FragmentHoursBinding
     private lateinit var adapter: WeatherAdapter
+    private val model: MainViewModel by activityViewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -27,19 +32,35 @@ class HoursFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         initRcView()
+        model.liveDataCurrent.observe(viewLifecycleOwner) { item ->
+            adapter.submitList(getHoursList(item))
+        }
     }
 
     private fun initRcView() = with(binding) {
         rcView.layoutManager = LinearLayoutManager(activity)
         adapter = WeatherAdapter()
         rcView.adapter = adapter
-        val list = listOf(
-            WeatherModel("", "12:00", "Sunny", "25 C", "", "", "", ""),
-            WeatherModel("", "15:00", "Cold", "24 C", "", "", "", ""),
-            WeatherModel("", "19:00", "Bold", "2 C", "", "", "", ""),
-            WeatherModel("", "20:20", "Sold", "15 C", "", "", "", "")
-        )
-        adapter.submitList(list)
+    }
+
+    private fun getHoursList(item: WeatherModel): List<WeatherModel> {
+        val list = ArrayList<WeatherModel>()
+        val hoursArray = JSONArray(item.hours)
+        for (i in 0 until hoursArray.length()) {
+            val hoursItem = hoursArray[i] as JSONObject
+            val weatherItem = WeatherModel(
+                item.city,
+                hoursItem.getString("time"),
+                hoursItem.getJSONObject("condition").getString("text"),
+                hoursItem.getString("temp_c"),
+                "",
+                "",
+                hoursItem.getJSONObject("condition").getString("icon"),
+                ""
+            )
+            list.add(weatherItem)
+        }
+        return list
     }
 
     companion object {
