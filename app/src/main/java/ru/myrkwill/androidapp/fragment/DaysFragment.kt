@@ -10,9 +10,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import ru.myrkwill.androidapp.MainViewModel
 import ru.myrkwill.androidapp.R
 import ru.myrkwill.androidapp.adapter.WeatherAdapter
+import ru.myrkwill.androidapp.adapter.WeatherModel
 import ru.myrkwill.androidapp.databinding.FragmentDaysBinding
 
-class DaysFragment : Fragment() {
+class DaysFragment : Fragment(), WeatherAdapter.Listener {
 
     private lateinit var binding: FragmentDaysBinding
     private lateinit var adapter: WeatherAdapter
@@ -36,12 +37,16 @@ class DaysFragment : Fragment() {
 
     private fun init() = with(binding) {
         rcView.layoutManager = LinearLayoutManager(activity)
-        adapter = WeatherAdapter()
+        adapter = WeatherAdapter(this@DaysFragment)
         rcView.adapter = adapter
     }
 
     companion object {
         @JvmStatic
         fun newInstance() = DaysFragment()
+    }
+
+    override fun onClick(item: WeatherModel) {
+        model.liveDataCurrent.value = item
     }
 }
