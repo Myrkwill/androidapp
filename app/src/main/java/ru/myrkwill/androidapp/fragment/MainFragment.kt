@@ -1,7 +1,12 @@
 package ru.myrkwill.androidapp.fragment
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -10,14 +15,21 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.activityViewModels
 import com.android.volley.Request
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.material.tabs.TabLayoutMediator
 import com.squareup.picasso.Picasso
 import org.json.JSONObject
+import ru.myrkwill.androidapp.DialogManager
 import ru.myrkwill.androidapp.MainViewModel
 import ru.myrkwill.androidapp.R
 import ru.myrkwill.androidapp.adapter.VpAdapter
@@ -27,6 +39,8 @@ import ru.myrkwill.androidapp.databinding.FragmentMainBinding
 const val API_KEY = "999fe75cf7934588b45125034230301"
 
 class MainFragment : Fragment() {
+
+    private lateinit var fLocationClient: FusedLocationProviderClient
 
     private val fList = listOf(
         HoursFragment.newInstance(),
@@ -55,15 +69,62 @@ class MainFragment : Fragment() {
         checkPermission()
         init()
         updateCurrentCard()
-        requestWeatherData("London")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        checkLocation()
     }
 
     private fun init() = with(binding) {
+        fLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
         val adapter = VpAdapter(activity as FragmentActivity, fList)
         vp.adapter = adapter
         TabLayoutMediator(tabLayout, vp) { tab, pos ->
             tab.text = tList[pos]
         }.attach()
+        ibSync.setOnClickListener {
+            checkLocation()
+        }
+    }
+
+    private fun checkLocation() {
+        if (isLocationEnabled()) {
+            requestWeatherData("London")
+        } else {
+            DialogManager.locationSettingsDialog(requireContext(), object: DialogManager.Listener {
+                override fun onClick() {
+                    startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                }
+            })
+        }
+    }
+
+     private fun isLocationEnabled(): Boolean {
+         val lm = activity?.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+         return lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
+     }
+
+    // Not working on simulator
+    private fun getLocation() {
+        val ct = CancellationTokenSource()
+        if (ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+
+            return
+        }
+        fLocationClient
+            .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, ct.token)
+            .addOnCompleteListener {
+                requestWeatherData("${it.result.latitude},${it.result.longitude}")
+            }
+
     }
 
     private fun updateCurrentCard() = with(binding) {
